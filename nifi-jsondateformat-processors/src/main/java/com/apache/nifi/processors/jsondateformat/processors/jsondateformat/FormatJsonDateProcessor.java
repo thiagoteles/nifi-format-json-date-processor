@@ -6,7 +6,6 @@ import com.google.gson.JsonObject;
 import org.apache.commons.io.IOUtils;
 import org.apache.nifi.components.PropertyDescriptor;
 import org.apache.nifi.flowfile.FlowFile;
-import org.apache.nifi.annotation.lifecycle.OnScheduled;
 import org.apache.nifi.annotation.documentation.CapabilityDescription;
 import org.apache.nifi.annotation.documentation.Tags;
 import org.apache.nifi.processor.AbstractProcessor;
@@ -14,6 +13,7 @@ import org.apache.nifi.processor.ProcessContext;
 import org.apache.nifi.processor.ProcessSession;
 import org.apache.nifi.processor.ProcessorInitializationContext;
 import org.apache.nifi.processor.Relationship;
+import org.apache.nifi.processor.exception.ProcessException;
 import org.apache.nifi.processor.util.StandardValidators;
 
 import java.nio.charset.StandardCharsets;
@@ -25,8 +25,6 @@ import java.util.concurrent.atomic.AtomicReference;
 @Tags({"json", "date", "format"})
 @CapabilityDescription("Format provided json date fields with specific format")
 public class FormatJsonDateProcessor extends AbstractProcessor {
-
-    private static String COMMA = ",";
 
     private List<PropertyDescriptor> descriptors;
     private Set<Relationship> relationships;
@@ -70,57 +68,55 @@ public class FormatJsonDateProcessor extends AbstractProcessor {
         properties.add(NEW_DATE_FORMAT);
         this.descriptors = Collections.unmodifiableList(properties);
 
-        Set<Relationship> relationships = new HashSet<>();
-        relationships.add(SUCCESS);
-        relationships.add(FAIL);
-        this.relationships = Collections.unmodifiableSet(relationships);
+        Set<Relationship> newRelationships = new HashSet<>();
+        newRelationships.add(SUCCESS);
+        newRelationships.add(FAIL);
+        this.relationships = Collections.unmodifiableSet(newRelationships);
     }
 
     @Override
-    public void onTrigger(final ProcessContext context, final ProcessSession session) {
-        final AtomicReference<String> value = new AtomicReference<>();
-
+    public void onTrigger(final ProcessContext context, final ProcessSession session) throws ProcessException {
+        final AtomicReference<String> json = new AtomicReference<>();
+        String[] properties = context.getProperty(JSON_PROPERTIES).getValue().split(",");
         FlowFile flowfile = session.get();
 
-        FlowFile currentFlowFile = flowfile;
-        session.read(flowfile, in -> {
-            try{
-                String json = IOUtils.toString(in, StandardCharsets.UTF_8.name());
-                JsonObject jsonObject = new Gson().fromJson(json, JsonObject.class).getAsJsonObject();
+        session.read(flowfile, in -> json.set(IOUtils.toString(in, StandardCharsets.UTF_8.name())));
 
-                String[] properties = context.getProperty(JSON_PROPERTIES).getValue().split(COMMA);
+        JsonObject jsonObject = new Gson().fromJson(json.get(), JsonObject.class).getAsJsonObject();
 
-                for (String property : properties) {
-                    JsonElement je = jsonObject.get(property.trim());
-                    String currentJsonValue = je.getAsString();
+        for (String property : properties) {
+            JsonElement jsonElement = jsonObject.get(property.trim());
+            String currentJsonValue = jsonElement.getAsString();
 
-                    if (currentJsonValue != null && !currentJsonValue.isEmpty()) {
-                        jsonObject.addProperty(property.trim(), getFormattedDate(context, currentJsonValue));
-                    }
+            if (currentJsonValue != null && !currentJsonValue.isEmpty()) {
+                String formattedDate = getFormattedDate(context, currentJsonValue);
+
+                if (formattedDate == null) {
+                    session.transfer(flowfile, FAIL);
+                    return;
                 }
 
-                value.set(jsonObject.toString());
-            } catch(Exception ex){
-                ex.printStackTrace();
-                getLogger().error("Failed to format date of json object.");
-                session.transfer(currentFlowFile, FAIL);
+                jsonObject.addProperty(property.trim(), formattedDate);
             }
-        });
+        }
 
-        flowfile = session.write(flowfile, out -> out.write(value.get().getBytes()));
-
+        json.set(jsonObject.toString());
+        flowfile = session.write(flowfile, out -> out.write(json.get().getBytes()));
         session.transfer(flowfile, SUCCESS);
     }
 
-    private String getFormattedDate(ProcessContext context, String oldDateString) throws ParseException {
-        SimpleDateFormat sdf = new SimpleDateFormat(context.getProperty(CURRENT_DATE_FORMAT).getValue());
-        Date d = sdf.parse(oldDateString);
-        sdf.applyPattern(context.getProperty(NEW_DATE_FORMAT).getValue());
-        return sdf.format(d);
-    }
+    private String getFormattedDate(ProcessContext context, String oldDateString) {
+        try {
+            SimpleDateFormat simpleDateFormat = new SimpleDateFormat(context.getProperty(CURRENT_DATE_FORMAT)
+                                                        .getValue());
+            Date date = simpleDateFormat.parse(oldDateString);
+            simpleDateFormat.applyPattern(context.getProperty(NEW_DATE_FORMAT).getValue());
+            return simpleDateFormat.format(date);
+        } catch (ParseException e) {
+            getLogger().error("Failed to convert one or more fields with provided format");
+        }
 
-    @OnScheduled
-    public void onScheduled(final ProcessContext context) {
+        return null;
     }
 
     @Override
@@ -131,5 +127,19 @@ public class FormatJsonDateProcessor extends AbstractProcessor {
     @Override
     public final List<PropertyDescriptor> getSupportedPropertyDescriptors() {
         return descriptors;
+    }
+
+    @Override
+    public boolean equals(Object o) {
+        if (this == o) return true;
+        if (o == null || getClass() != o.getClass()) return false;
+        if (!super.equals(o)) return false;
+        FormatJsonDateProcessor that = (FormatJsonDateProcessor) o;
+        return Objects.equals(descriptors, that.descriptors) && Objects.equals(relationships, that.relationships);
+    }
+
+    @Override
+    public int hashCode() {
+        return Objects.hash(super.hashCode(), descriptors, relationships);
     }
 }
