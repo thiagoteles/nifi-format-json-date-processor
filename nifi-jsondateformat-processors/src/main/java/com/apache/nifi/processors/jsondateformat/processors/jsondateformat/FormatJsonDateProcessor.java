@@ -53,12 +53,12 @@ public class FormatJsonDateProcessor extends AbstractProcessor {
             .build();
 
     public static final Relationship SUCCESS = new Relationship.Builder()
-            .name("SUCCESS")
+            .name("success")
             .description("Success relationship")
             .build();
 
     public static final Relationship FAIL = new Relationship.Builder()
-            .name("FAIL")
+            .name("failure")
             .description("Fail relationship")
             .build();
 
