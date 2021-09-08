@@ -15,6 +15,8 @@ import org.apache.nifi.processor.ProcessSession;
 import org.apache.nifi.processor.ProcessorInitializationContext;
 import org.apache.nifi.processor.Relationship;
 import org.apache.nifi.processor.util.StandardValidators;
+
+import java.nio.charset.StandardCharsets;
 import java.text.ParseException;
 import java.text.SimpleDateFormat;
 import java.util.*;
@@ -22,7 +24,7 @@ import java.util.concurrent.atomic.AtomicReference;
 
 @Tags({"json", "date", "format"})
 @CapabilityDescription("Format provided json date fields with specific format")
-public class JsonProcessor extends AbstractProcessor {
+public class FormatJsonDateProcessor extends AbstractProcessor {
 
     private static String COMMA = ",";
 
@@ -83,7 +85,7 @@ public class JsonProcessor extends AbstractProcessor {
         FlowFile currentFlowFile = flowfile;
         session.read(flowfile, in -> {
             try{
-                String json = IOUtils.toString(in);
+                String json = IOUtils.toString(in, StandardCharsets.UTF_8.name());
                 JsonObject jsonObject = new Gson().fromJson(json, JsonObject.class).getAsJsonObject();
 
                 String[] properties = context.getProperty(JSON_PROPERTIES).getValue().split(COMMA);

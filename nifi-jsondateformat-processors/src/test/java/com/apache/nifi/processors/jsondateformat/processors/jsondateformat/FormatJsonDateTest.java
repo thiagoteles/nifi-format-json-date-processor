@@ -4,30 +4,32 @@ import org.apache.commons.io.IOUtils;
 import org.apache.nifi.util.MockFlowFile;
 import org.apache.nifi.util.TestRunner;
 import org.apache.nifi.util.TestRunners;
+import org.junit.Test;
 
 import java.io.ByteArrayInputStream;
 import java.io.IOException;
 import java.io.InputStream;
+import java.nio.charset.StandardCharsets;
 import java.util.List;
 import static org.junit.Assert.*;
 
-public class JsonProcessorTest {
+public class FormatJsonDateTest {
     /**
      * Test of onTrigger method, of class JsonProcessor.
      */
-    @org.junit.Test
-    public void testOnTrigger() throws IOException {
+    @Test
+    public void testOnTrigger() {
         // Content to be mock a json file
         InputStream content = new ByteArrayInputStream(("{ \"name\": \"Thiago Teles\", \"eventDate\": \"1/10/2021\", " +
                 "\"lastDate\": \"1/9/2020\", \"nonFormattedDate\": \"5/8/2021\" }").getBytes());
 
         // Generate a test runner to mock a processor in a flow
-        TestRunner runner = TestRunners.newTestRunner(new JsonProcessor());
+        TestRunner runner = TestRunners.newTestRunner(new FormatJsonDateProcessor());
 
         // Add properties
-        runner.setProperty(JsonProcessor.JSON_PROPERTIES, "eventDate, lastDate");
-        runner.setProperty(JsonProcessor.CURRENT_DATE_FORMAT, "d/M/yyyy");
-        runner.setProperty(JsonProcessor.NEW_DATE_FORMAT, "yyyy-MM-dd");
+        runner.setProperty(FormatJsonDateProcessor.JSON_PROPERTIES, "eventDate, lastDate");
+        runner.setProperty(FormatJsonDateProcessor.CURRENT_DATE_FORMAT, "d/M/yyyy");
+        runner.setProperty(FormatJsonDateProcessor.NEW_DATE_FORMAT, "yyyy-MM-dd");
 
         // Add the content to the runner
         runner.enqueue(content);
@@ -39,14 +41,13 @@ public class JsonProcessorTest {
         runner.assertQueueEmpty();
 
         // If you need to read or do additional tests on results you can access the content
-        List<MockFlowFile> results = runner.getFlowFilesForRelationship(JsonProcessor.SUCCESS);
-        assertTrue("1 match", results.size() == 1);
+        List<MockFlowFile> results = runner.getFlowFilesForRelationship(FormatJsonDateProcessor.SUCCESS);
+        assertEquals("1 match", 1, results.size());
         MockFlowFile result = results.get(0);
-        String resultValue = new String(runner.getContentAsByteArray(result));
-        System.out.println("Match: " + IOUtils.toString(runner.getContentAsByteArray(result)));
+
+        System.out.println("Match: " + IOUtils.toString(runner.getContentAsByteArray(result), StandardCharsets.UTF_8.name()));
 
         // Test attributes and content
-
         result.assertContentEquals("{\"name\":\"Thiago Teles\",\"eventDate\":\"2021-10-01\",\"lastDate\":\"2020-09-01\",\"nonFormattedDate\":\"5/8/2021\"}");
     }
 }

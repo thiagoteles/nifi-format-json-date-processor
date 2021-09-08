@@ -1,1 +1,1 @@
-com.apache.nifi.processors.jsondateformat.processors.jsondateformat.JsonProcessor
+com.apache.nifi.processors.jsondateformat.processors.jsondateformat.FormatJsonDateProcessor
