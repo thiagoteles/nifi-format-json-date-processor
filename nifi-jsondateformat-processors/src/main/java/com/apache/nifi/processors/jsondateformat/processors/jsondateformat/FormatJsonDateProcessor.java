@@ -86,17 +86,21 @@ public class FormatJsonDateProcessor extends AbstractProcessor {
 
         for (String property : properties) {
             JsonElement jsonElement = jsonObject.get(property.trim());
-            String currentJsonValue = jsonElement.getAsString();
 
-            if (currentJsonValue != null && !currentJsonValue.isEmpty()) {
-                String formattedDate = getFormattedDate(context, currentJsonValue);
+            if (jsonElement != null && !jsonElement.isJsonNull())
+            {
+                String currentJsonValue = jsonElement.getAsString();
 
-                if (formattedDate == null) {
-                    session.transfer(flowfile, FAIL);
-                    return;
+                if (currentJsonValue != null && !currentJsonValue.isEmpty()) {
+                    String formattedDate = getFormattedDate(context, currentJsonValue);
+
+                    if (formattedDate == null) {
+                        session.transfer(flowfile, FAIL);
+                        return;
+                    }
+
+                    jsonObject.addProperty(property.trim(), formattedDate);
                 }
-
-                jsonObject.addProperty(property.trim(), formattedDate);
             }
         }
 
