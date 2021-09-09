@@ -1,6 +1,7 @@
 package com.apache.nifi.processors.jsondateformat.processors.jsondateformat;
 
 import com.google.gson.Gson;
+import com.google.gson.JsonArray;
 import com.google.gson.JsonElement;
 import com.google.gson.JsonObject;
 import org.apache.commons.io.IOUtils;
@@ -82,30 +83,40 @@ public class FormatJsonDateProcessor extends AbstractProcessor {
 
         session.read(flowfile, in -> json.set(IOUtils.toString(in, StandardCharsets.UTF_8.name())));
 
-        JsonObject jsonObject = new Gson().fromJson(json.get(), JsonObject.class).getAsJsonObject();
+        JsonArray jsonArray = new Gson().fromJson(json.get(), JsonArray.class);
+        JsonArray newArray = new JsonArray();
 
-        for (String property : properties) {
-            JsonElement jsonElement = jsonObject.get(property.trim());
+        for(JsonElement obj : jsonArray)
+        {
+            for (String property : properties) {
+                JsonObject currentObject = ((JsonObject)obj);
 
-            if (jsonElement != null && !jsonElement.isJsonNull())
-            {
-                String currentJsonValue = jsonElement.getAsString();
+                JsonElement jsonElement = currentObject.get(property.trim());
 
-                if (currentJsonValue != null && !currentJsonValue.isEmpty()) {
-                    String formattedDate = getFormattedDate(context, currentJsonValue);
+                if (jsonElement != null && !jsonElement.isJsonNull())
+                {
+                    String currentJsonValue = jsonElement.getAsString();
 
-                    if (formattedDate == null) {
-                        session.transfer(flowfile, FAIL);
-                        return;
+                    if (currentJsonValue != null && !currentJsonValue.isEmpty()) {
+                        String formattedDate = getFormattedDate(context, currentJsonValue);
+
+                        if (formattedDate == null) {
+                            session.transfer(flowfile, FAIL);
+                            return;
+                        }
+
+                        currentObject.addProperty(property.trim(), formattedDate);
                     }
-
-                    jsonObject.addProperty(property.trim(), formattedDate);
                 }
             }
+            newArray.add(obj);
         }
 
-        json.set(jsonObject.toString());
-        flowfile = session.write(flowfile, out -> out.write(json.get().getBytes()));
+        String jsonResult = newArray.toString().replace("\\","")
+                                .replace("[\"", "[")
+                                .replace("\"]", "]");
+
+        flowfile = session.write(flowfile, out -> out.write(jsonResult.getBytes()));
         session.transfer(flowfile, SUCCESS);
     }
 

@@ -16,8 +16,10 @@ public class FormatJsonDateTest {
     @Test
     public void testOnTrigger_success() {
         // Content to be mock a json file
-        InputStream content = new ByteArrayInputStream(("{ \"name\": \"Thiago Teles\", \"eventDate\": \"1/10/2021\", " +
-                "\"lastDate\": \"1/9/2020\", \"nonFormattedDate\": \"5/8/2021\" }").getBytes());
+        InputStream content = new ByteArrayInputStream(("[{ \"name\": \"Thiago Teles\", \"eventDate\": \"1/9/2021\", " +
+                "\"lastDate\": \"1/9/2020\", \"nonFormattedDate\": \"5/8/2021\" }, { \"name\": \"Thiago Teles\", " +
+                "\"eventDate\": \"1/9/2021\", \"lastDate\": \"1/9/2020\", \"nonFormattedDate\": \"5/8/2021\" }]")
+                .getBytes());
 
         // Generate a test runner to mock a processor in a flow
         TestRunner runner = TestRunners.newTestRunner(new FormatJsonDateProcessor());
@@ -45,14 +47,15 @@ public class FormatJsonDateTest {
                 StandardCharsets.UTF_8.name()));
 
         // Test attributes and content
-        result.assertContentEquals("{\"name\":\"Thiago Teles\",\"eventDate\":\"2021-10-01\",\"lastDate\":\"2020-09-01\",\"nonFormattedDate\":\"5/8/2021\"}");
+        result.assertContentEquals("[{\"name\":\"Thiago Teles\",\"eventDate\":\"2021-09-01\"," +
+                "\"lastDate\":\"2020-09-01\",\"nonFormattedDate\":\"5/8/2021\"},{\"name\":\"Thiago Teles\"," +
+                "\"eventDate\":\"2021-09-01\",\"lastDate\":\"2020-09-01\",\"nonFormattedDate\":\"5/8/2021\"}]");
     }
 
     @Test
     public void testOnTrigger_failure() {
         // Content to be mock a json file
-        String originalJsonValue = "{ \"name\": \"Thiago Teles\", \"eventDate\": \"1/10/2021\", " +
-                "\"lastDate\": \"1/9/2020\", \"nonFormattedDate\": \"5/8/2021\" }";
+        String originalJsonValue = "[{ \"name\": \"Thiago Teles\", \"eventDate\": \"1/10/2021\", \"lastDate\": \"1/9/2020\", \"nonFormattedDate\": \"5/8/2021\" }]";
         InputStream content = new ByteArrayInputStream((originalJsonValue).getBytes());
 
         // Generate a test runner to mock a processor in a flow
@@ -86,8 +89,8 @@ public class FormatJsonDateTest {
     @Test
     public void testOnTrigger_with_null_dates() {
         // Content to be mock a json file
-        InputStream content = new ByteArrayInputStream(("{ \"name\": \"Thiago Teles\", \"eventDate\": null, " +
-                "\"lastDate\": \"1/9/2020\", \"nonFormattedDate\": \"5/8/2021\" }").getBytes());
+        InputStream content = new ByteArrayInputStream(("[{ \"name\": \"Thiago Teles\", \"eventDate\": null, " +
+                "\"lastDate\": \"1/9/2020\", \"nonFormattedDate\": \"5/8/2021\" }]").getBytes());
 
         // Generate a test runner to mock a processor in a flow
         TestRunner runner = TestRunners.newTestRunner(new FormatJsonDateProcessor());
@@ -115,15 +118,15 @@ public class FormatJsonDateTest {
                 StandardCharsets.UTF_8.name()));
 
         // Test attributes and content
-        result.assertContentEquals("{\"name\":\"Thiago Teles\",\"eventDate\":null," +
-                "\"lastDate\":\"2020-09-01\",\"nonFormattedDate\":\"5/8/2021\"}");
+        result.assertContentEquals("[{\"name\":\"Thiago Teles\",\"eventDate\":null,\"lastDate\":\"2020-09-01\"," +
+                "\"nonFormattedDate\":\"5/8/2021\"}]");
     }
 
     @Test
     public void testOnTrigger_with_empty_dates() {
         // Content to be mock a json file
-        InputStream content = new ByteArrayInputStream(("{ \"name\": \"Thiago Teles\", \"eventDate\": \"\", " +
-                "\"lastDate\": \"1/9/2020\", \"nonFormattedDate\": \"5/8/2021\" }").getBytes());
+        InputStream content = new ByteArrayInputStream(("[{ \"name\": \"Thiago Teles\", \"eventDate\": \"\", " +
+                "\"lastDate\": \"1/9/2020\", \"nonFormattedDate\": \"5/8/2021\" }]").getBytes());
 
         // Generate a test runner to mock a processor in a flow
         TestRunner runner = TestRunners.newTestRunner(new FormatJsonDateProcessor());
@@ -151,7 +154,7 @@ public class FormatJsonDateTest {
                 StandardCharsets.UTF_8.name()));
 
         // Test attributes and content
-        result.assertContentEquals("{\"name\":\"Thiago Teles\",\"eventDate\":\"\"," +
-                "\"lastDate\":\"2020-09-01\",\"nonFormattedDate\":\"5/8/2021\"}");
+        result.assertContentEquals("[{\"name\":\"Thiago Teles\",\"eventDate\":\"\",\"lastDate\":\"2020-09-01\"," +
+                "\"nonFormattedDate\":\"5/8/2021\"}]");
     }
 }
